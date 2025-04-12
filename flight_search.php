@@ -1,105 +1,143 @@
 <?php
-session_start();
-include 'includes/header.php';
-require_once 'includes/db.php';
+// search_flights.php
 ?>
+<!DOCTYPE html>
+<html>
 
-<h2>Search Flights</h2>
-<form method="POST">
-    <label>From:</label>
-    <input type="text" name="source" required><br>
-
-    <label>To:</label>
-    <input type="text" name="destination" required><br>
-
-    <label>Departure Time:</label>
-    <input type="text" name="departure"><br>
-
-    <label>Arrival Time:</label>
-    <input type="text" name="arrival"><br>
-
-    <label>Min Price:</label>
-    <input type="number" name="min_price" min="0"><br>
-
-    <label>Max Price:</label>
-    <input type="number" name="max_price" min="0"><br>
-
-    <label>Class:</label>
-    <select name="class">
-        <option value="">Any</option>
-        <option value="economy">Economy</option>
-        <option value="business">Business</option>
-        <option value="first">First Class</option>
-    </select><br>
-
-    <label>Flight Duration (hours):</label>
-    <input type="number" name="min_duration" min="0"><br>
-
-    <input type="submit" name="search" value="Search Flights">
-</form>
+<head>
+    <meta charset="UTF-8">
+    <title>Search Flights</title>
 
 
-<?php
-if (isset($_POST['search'])) {
-    $source = mysqli_real_escape_string($conn, $_POST['source']);
-    $destination = mysqli_real_escape_string($conn, $_POST['destination']);
-    $departure = mysqli_real_escape_string($conn, $_POST['departure']);
-    $arrival = mysqli_real_escape_string($conn, $_POST['arrival']);
-    $min_price = $_POST['min_price'];
-    $max_price = $_POST['max_price'];
-    // $status = mysqli_real_escape_string($conn, $_POST['status']);
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/flight_search.css">
+</head>
 
-    // ✅ Build the dynamic query
-    $query = "SELECT * FROM flights WHERE from_location='$source' AND to_location='$destination'";
+<body>
+    <div class="container">
+        <div class="search-container">
+            <div class="search-header">
+                <h2><i class="fas fa-plane me-2"></i>Search Flights</h2>
+                <p class="text-muted">Find the best flights for your journey</p>
+            </div>
 
-    if (!empty($departure)) {
-        $query .= " AND departure='$departure'";
-    }
+            <form method="POST" action="flight_results.php" id="flightForm" novalidate>
+                <div class="form-group mb-4">
+                    <label class="form-label">Trip Type:</label>
+                    <div class="trip-type">
+                        <label>
+                            <input type="radio" name="trip_type" value="oneway" checked class="me-2">
+                            <i class="fas fa-arrow-right me-1"></i> One Way
+                        </label>
+                        <label>
+                            <input type="radio" name="trip_type" value="round" class="me-2">
+                            <i class="fas fa-exchange-alt me-1"></i> Round Trip
+                        </label>
+                    </div>
+                </div>
 
-    if (!empty($arrival)) {
-        $query .= " AND arrival='$arrival'";
-    }
+                <div class="form-group mb-4 location-fields">
+                    <div class="row g-3">
+                        <div class="col-md-5 position-relative">
+                            <label for="from_location" class="form-label">From:</label>
+                            <select name="from_location" id="from_location" class="form-select" required>
+                                <option value="">-- Select City --</option>
+                                <option value="DEL">Delhi (DEL)</option>
+                                <option value="BOM">Mumbai (BOM)</option>
+                                <option value="BLR">Bangalore (BLR)</option>
+                                <option value="HYD">Hyderabad (HYD)</option>
+                                <option value="MAA">Chennai (MAA)</option>
+                                <option value="CCU">Kolkata (CCU)</option>
+                            </select>
+                            <i class="fas fa-map-marker-alt form-icon"></i>
+                            <div class="error-message" id="from-error"></div>
+                        </div>
 
-    if (!empty($min_price)) {
-        $query .= " AND price >= $min_price";
-    }
+                        <div class="col-md-2 position-relative">
+                            <button type="button" class="swap-btn" id="swapLocations">
+                                <i class="fas fa-exchange-alt"></i>
+                            </button>
+                        </div>
 
-    if (!empty($max_price)) {
-        $query .= " AND price <= $max_price";
-    }
+                        <div class="col-md-5 position-relative">
+                            <label for="to_location" class="form-label">To:</label>
+                            <select name="to_location" id="to_location" class="form-select" required>
+                                <option value="">-- Select City --</option>
+                                <option value="DEL">Delhi (DEL)</option>
+                                <option value="BOM">Mumbai (BOM)</option>
+                                <option value="BLR">Bangalore (BLR)</option>
+                                <option value="HYD">Hyderabad (HYD)</option>
+                                <option value="MAA">Chennai (MAA)</option>
+                                <option value="CCU">Kolkata (CCU)</option>
+                            </select>
+                            <i class="fas fa-map-marker-alt form-icon"></i>
+                            <div class="error-message" id="to-error"></div>
+                        </div>
+                    </div>
+                </div>
 
-    if (!empty($class)) {
-        $query .= " AND class='$class'";
-    }
+                <div class="form-group mb-4 date-fields">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="departure" class="form-label">Departure Date:</label>
+                            <div class="position-relative">
+                                <input type="date" name="departure" id="departure" class="form-control" required>
+                                <i class="fas fa-calendar-alt form-icon"></i>
+                                <div class="error-message" id="departure-error"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="return_date" class="form-label">Return Date:</label>
+                            <div class="position-relative">
+                                <input type="date" name="return_date" id="return_date" class="form-control" disabled>
+                                <i class="fas fa-calendar-alt form-icon"></i>
+                                <div class="error-message" id="return-error"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    if (!empty($min_duration)) {
-        $query .= " AND duration >= $min_duration";
-    }
+                <div class="form-group mb-4">
+                    <label for="seat_class" class="form-label">Seat Class:</label>
+                    <select name="seat_class" id="seat_class" class="form-select">
+                        <option value="">Any Class</option>
+                        <option value="economy">Economy</option>
+                        <option value="business">Business</option>
+                        <option value="first">First Class</option>
+                    </select>
+                </div>
 
-    $result = mysqli_query($conn, $query);
+                <div class="form-group mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="min_price" class="form-label">Min Price (₹):</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="min_price" id="min_price" class="form-control" min="0"
+                                    placeholder="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="max_price" class="form-label">Max Price (₹):</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="max_price" id="max_price" class="form-control" min="0"
+                                    placeholder="Any">
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-    if (mysqli_num_rows($result) > 0) {
-        echo "<h3>Available Flights</h3>";
-        echo "<table border='1'>
-                <tr><th>Flight</th><th>From</th><th>To</th><th>Departure</th><th>Arrival</th><th>Price</th><th>Status</th><th>Action</th></tr>";
+                <button type="submit" class="btn btn-search">
+                    <i class="fas fa-search me-2"></i> Search Flights
+                </button>
+            </form>
+        </div>
+    </div>
 
-        while ($row = mysqli_fetch_assoc($result)) {
-            echo "<tr>
-                    <td>{$row['flight_name']}</td>
-                    <td>{$row['from_location']}</td>
-                    <td>{$row['to_location']}</td>
-                    <td>{$row['departure']}</td>
-                    <td>{$row['arrival']}</td>
-                    <td>₹{$row['price']}</td>
-                    <td>{$row['status']}</td>
-                    <td><a href='passenger_details.php?flight_id={$row['id']}'>Book Now</a></td>
-                  </tr>";
-        }
-        echo "</table>";
-    } else {
-        echo "❌ No flights found for selected criteria.";
-    }
-}
-?>
+    <script src="assets/js/flight_search.js"></script>
+</body>
 
-<?php include 'includes/footer.php'; ?>
+</html>
